@@ -1,41 +1,36 @@
-name: Build Windows EXE
+const { app, BrowserWindow } = require('electron');
+const path = require('node:path');
 
-on:
-  workflow_dispatch:
-  push:
-    branches: [main]
-    paths:
-      - "src/**"
-      - "package.json"
-      - ".github/workflows/build-windows.yml"
+function createWindow() {
+  const win = new BrowserWindow({
+    width: 1280,
+    height: 820,
+    minWidth: 800,
+    minHeight: 600,
+    title: 'OMEGA Script Studio',
+    backgroundColor: '#0c0b12',
+    webPreferences: {
+      preload: path.join(__dirname, 'preload.js'),
+      contextIsolation: true,
+      nodeIntegration: false
+    }
+  });
 
-permissions:
-  contents: read
+  win.loadFile(path.join(__dirname, 'index.html'));
+}
 
-jobs:
-  build:
-    runs-on: windows-latest
-    steps:
-      - name: Checkout source
-        uses: actions/checkout@v4
+app.whenReady().then(() => {
+  createWindow();
 
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: 20
-          cache: npm
+  app.on('activate', () => {
+    if (BrowserWindow.getAllWindows().length === 0) {
+      createWindow();
+    }
+  });
+});
 
-      - name: Install dependencies
-        run: npm install
-
-      - name: Build Windows installer and portable EXE
-        run: npx electron-builder --win nsis portable
-
-      - name: Upload EXE files
-        uses: actions/upload-artifact@v4
-        with:
-          name: OMEGA-Script-Studio-Windows
-          path: |
-            dist/*.exe
-          if-no-files-found: error
-          retention-days: 14
+app.on('window-all-closed', () => {
+  if (process.platform !== 'darwin') {
+    app.quit();
+  }
+});
