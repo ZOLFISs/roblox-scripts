@@ -1,59 +1,33 @@
-const $ = id => document.getElementById(id);
-const code = $('code');
-let currentPath = null;
-let currentName = 'main.luau';
-let savedValue = code.value;
-let wrapEnabled = false;
-const samples = {
-hello: `-- Hello World\nprint("Hello from OMEGA Script Studio!")\n`,
-part: `-- Server Script: create a Part in Workspace\nlocal part = Instance.new("Part")\npart.Name = "MyPart"\npart.Size = Vector3.new(4, 1, 4)\npart.Position = Vector3.new(0, 5, 0)\npart.Anchored = true\npart.Parent = workspace\n`,
-player: `-- Server Script: greet players when they join\nlocal Players = game:GetService("Players")\n\nPlayers.PlayerAdded:Connect(function(player)\n    print("Welcome, " .. player.Name .. "!")\nend)\n`
-};
-function toast(message) { const el=$('toast'); el.textContent=message; el.classList.add('show'); clearTimeout(toast.timer); toast.timer=setTimeout(()=>el.classList.remove('show'),2400); }
-function log(message, kind='green') {
- const row=document.createElement('div'); row.className='output-line';
- const time=document.createElement('span'); time.className='output-time'; time.textContent=new Date().toLocaleTimeString();
- const mark=document.createElement('span'); mark.className=kind==='purple'?'output-purple':'output-green'; mark.textContent=kind==='purple'?'✦':'●';
- const text=document.createElement('span'); text.textContent=message;
- row.append(time,mark,text); $('outputContent').append(row); $('outputContent').scrollTop=$('outputContent').scrollHeight;
+{
+  "name": "omega-script-studio",
+  "version": "1.0.0",
+  "description": "OMEGA Script Studio - Luau editor",
+  "main": "src/main.js",
+  "author": "OMEGA",
+  "license": "MIT",
+  "scripts": {
+    "start": "electron .",
+    "build:win": "electron-builder --win nsis portable"
+  },
+  "devDependencies": {
+    "electron": "^37.2.0",
+    "electron-builder": "^26.0.12"
+  },
+  "build": {
+    "appId": "com.omega.scriptstudio",
+    "productName": "OMEGA Script Studio",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "src/**/*",
+      "package.json"
+    ],
+    "win": {
+      "target": [
+        "nsis",
+        "portable"
+      ]
+    }
+  }
 }
-function update() {
- const lines=code.value.split('\n').length;
- $('lineNumbers').textContent=Array.from({length:lines},(_,i)=>i+1).join('\n');
- $('lineCount').textContent=`${lines} lines`;
- $('charCount').textContent=`${code.value.length} chars`;
- $('unsaved').style.opacity=code.value===savedValue?'0':'1';
- const pos=code.selectionStart; const before=code.value.slice(0,pos).split('\n');
- $('cursorPos').textContent=`Ln ${before.length}, Col ${before[before.length-1].length+1}`;
-}
-code.addEventListener('input',update); code.addEventListener('keyup',update); code.addEventListener('click',update); code.addEventListener('scroll',()=>{ $('lineNumbers').scrollTop=code.scrollTop; });
-code.addEventListener('keydown',e=>{
- if(e.key==='Tab'){e.preventDefault(); const a=code.selectionStart,b=code.selectionEnd; code.setRangeText('    ',a,b,'end'); update();}
- if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='s'){e.preventDefault();save();}
- if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='o'){e.preventDefault();open();}
-});
-function setCode(value,name='main.luau',path=null){code.value=value;currentName=name;currentPath=path;$('fileName').textContent=name;$('crumbName').textContent=name;document.querySelector('.tab').innerHTML=`<span class="tab-lambda">λ</span> ${escapeHtml(name)} <span class="tab-close">×</span>`;savedValue=value;update();}
-function escapeHtml(s){return s.replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
-async function open(){try{const f=await window.omega.openFile();if(f){setCode(f.content,f.name,f.path);log(`Открыт файл ${f.name}`);}}catch(e){toast('Не удалось открыть файл');}}
-async function save(){try{const r=await window.omega.saveFile({path:currentPath,name:currentName,content:code.value});if(r){currentPath=r.path;currentName=r.name;savedValue=code.value;$('fileName').textContent=r.name;$('crumbName').textContent=r.name;update();log(`Сохранено: ${r.name}`);toast('Файл сохранён');}}catch(e){toast('Ошибка сохранения');}}
-$('openBtn').addEventListener('click',open); $('saveBtn').addEventListener('click',save);
-$('exportBtn').addEventListener('click',async()=>{try{if(await window.omega.exportFile(code.value)){log('Экспортирован Luau-файл');toast('Экспорт завершён');}}catch(e){toast('Ошибка экспорта');}});
-document.querySelectorAll('.snippet').forEach(btn=>btn.addEventListener('click',()=>{setCode(samples[btn.dataset.snippet],btn.dataset.snippet+'.luau');log(`Загружен шаблон: ${btn.querySelector('b').textContent}`,'purple');}));
-$('newTab').addEventListener('click',()=>{setCode('-- Новый скрипт Luau\n\n',`script-${Date.now().toString().slice(-4)}.luau`);toast('Создан новый документ');});
-$('tabPlus').addEventListener('click',()=>$('newTab').click());
-$('wrapBtn').addEventListener('click',()=>{wrapEnabled=!wrapEnabled;code.wrap=wrapEnabled?'soft':'off';toast(wrapEnabled?'Перенос строк включён':'Перенос строк выключен');});
-$('clearOutput').addEventListener('click',()=>{$('outputContent').innerHTML='';log('Панель вывода очищена','purple');});
-$('docsBtn').addEventListener('click',()=>window.omega.openDocs());
-$('hubNav').addEventListener('click',()=>{document.querySelector('.library-label').scrollIntoView({behavior:'smooth',block:'center'});toast('Шаблоны скриптов находятся слева');});
-document.querySelectorAll('[data-prompt]').forEach(btn=>btn.addEventListener('click',()=>{$('request').value=btn.dataset.prompt;toast('Запрос подготовлен');}));
-$('copyPrompt').addEventListener('click',async()=>{
- const task=$('request').value.trim(); if(!task){toast('Сначала опиши задачу');$('request').focus();return;}
- const prompt=`Ты — помощник по Roblox Luau. Помоги создать или улучшить скрипт для моей собственной игры в Roblox Studio. Не используй эксплойты или инжекторы для публичных игр.\n\nЗадача: ${task}\n\nТекущий код:\n\`\`\`lua\n${code.value}\n\`\`\`\n\nДай рабочий код, укажи куда поместить Script/LocalScript/ModuleScript и кратко объясни тестирование.`;
- try{await navigator.clipboard.writeText(prompt);toast('Запрос скопирован — вставь его в ChatGPT');log('Подготовлен запрос для ChatGPT','purple');}catch(e){const ta=document.createElement('textarea');ta.value=prompt;document.body.append(ta);ta.select();document.execCommand('copy');ta.remove();toast('Запрос скопирован');}
-});
-document.querySelectorAll('.bottom-tab').forEach(btn=>btn.addEventListener('click',()=>{
- document.querySelectorAll('.bottom-tab').forEach(b=>b.classList.toggle('active',b===btn));
- if(btn.dataset.bottom==='guide'){$('outputContent').innerHTML='<div class="output-line"><span class="output-purple">1.</span><span>Выбери шаблон слева или напиши свой Luau-код.</span></div><div class="output-line"><span class="output-purple">2.</span><span>Сохрани файл или экспортируй .luau.</span></div><div class="output-line"><span class="output-purple">3.</span><span>Открой Roblox Studio и вставь код в Script / LocalScript.</span></div><div class="output-line"><span class="output-purple">4.</span><span>Нажми Play в Studio и смотри Output для ошибок.</span></div>';}
- else {$('outputContent').innerHTML='';log('OMEGA Script Studio готов к работе.');log('Редактируй файл, затем экспортируй его в Roblox Studio.','purple');}
-}));
-update();
