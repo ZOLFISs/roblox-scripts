@@ -1,8 +1,8 @@
 {
   "name": "omega-script-studio",
   "version": "1.0.0",
-  "description": "OMEGA Script Studio - Luau editor",
-  "main": "src/main.js",
+  "description": "OMEGA Script Studio - Desktop Luau Editor",
+  "main": "main.js",
   "author": "OMEGA",
   "license": "MIT",
   "scripts": {
@@ -20,7 +20,9 @@
       "output": "dist"
     },
     "files": [
-      "src/**/*",
+      "*.js",
+      "*.css",
+      "*.html",
       "package.json"
     ],
     "win": {
